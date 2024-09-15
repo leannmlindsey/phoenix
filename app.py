@@ -37,7 +37,7 @@ image_path = 'assets/phoenixlogo.jpg'
 
 # Initialize the app
 app = Dash(__name__)
-
+server = app.server  # Expose the Flask server instance
 # Define the app layout
 app.layout = html.Div([
     html.Div(
