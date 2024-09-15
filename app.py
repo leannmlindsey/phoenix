@@ -27,7 +27,7 @@ import pandas as pd
 import os
 
 # Read the accession file
-accession_df = pd.read_csv('data/accession.csv')
+accession_df = pd.read_csv('data/Accession.csv')
 
 # Prepare options for the dropdown
 dropdown_options = [{'label': accession, 'value': accession} for accession in accession_df['Accession']]
