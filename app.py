@@ -25,12 +25,16 @@ from dash import Dash, html, dcc, Output, Input
 import plotly.express as px
 import pandas as pd
 import os
+import plotly.graph_objects as go
 
 # Read the accession file
 accession_df = pd.read_csv('data/Accession.csv')
 
 # Prepare options for the dropdown
-dropdown_options = [{'label': accession, 'value': accession} for accession in accession_df['Accession']]
+dropdown_options = [
+    {'label': f"{row['Accession']} - {row['Organism Name']}", 'value': row['Accession']}
+    for index, row in accession_df.iterrows()
+]
 
 # Set the image path
 image_path = 'assets/phoenixlogo.jpg'
@@ -38,6 +42,23 @@ image_path = 'assets/phoenixlogo.jpg'
 # Initialize the app
 app = Dash(__name__)
 server = app.server  # Expose the Flask server instance
+
+# Define initial accession
+initial_accession = accession_df['Accession'].iloc[0]
+
+# Load initial dataset
+csv_path = os.path.join('data', f'{initial_accession}.csv')
+
+if os.path.exists(csv_path):
+    df = pd.read_csv(csv_path)
+    df.columns = pd.to_numeric(df.columns, errors='coerce')
+    df.index = ['gLM Raw signal', 'PHASTER', 'REFERENCE']
+else:
+    df = pd.DataFrame(index=['gLM Raw signal', 'PHASTER', 'REFERENCE'])
+
+# Define index options for the checklist
+index_options = [{'label': index_label, 'value': index_label} for index_label in df.index]
+
 # Define the app layout
 app.layout = html.Div([
     html.Div(
@@ -68,20 +89,34 @@ app.layout = html.Div([
             dcc.Dropdown(
                 id='dataset-dropdown',
                 options=dropdown_options,
-                value=accession_df['Accession'].iloc[0],  # Default value
+                value=initial_accession,  # Default value
                 clearable=False,
-                style={'width': '300px'}
+                style={'width': '100%'}
             )
         ],
-        style={'margin-left': '50px', 'margin-top': '20px'}
+        style={'margin-left': '50px', 'margin-top': '20px', 'width': '500px'}
     ),
 
     # Heatmap graph component
-    dcc.Graph(id='graph-content', config={'displayModeBar': True})
+    dcc.Graph(id='graph-content', config={'displayModeBar': True}),
+
+    # Checklist for selecting rows
+    html.Div(
+        [
+            html.Label('Select Rows to Include:', style={'font-weight': 'bold'}),
+            dcc.Checklist(
+                id='row-checklist',
+                options=index_options,
+                value=df.index.tolist(),  # Default to all rows selected
+                labelStyle={'display': 'block'}
+            )
+        ],
+        style={'margin-left': '50px', 'margin-top': '20px'}
+    )
 ], style={'position': 'relative'})
 
-# Function to create the heatmap figure based on the selected dataset
-def create_heatmap_figure(accession):
+# Function to create the heatmap figure based on the selected dataset and rows
+def create_heatmap_figure(accession, selected_rows):
     try:
         # Construct the path to the dataset CSV file
         csv_path = os.path.join('data', f'{accession}.csv')
@@ -106,16 +141,30 @@ def create_heatmap_figure(accession):
         df.columns = pd.to_numeric(df.columns, errors='coerce')
         df.index = ['gLM Raw signal', 'PHASTER', 'REFERENCE']
 
+        # Filter the DataFrame based on selected rows
+        #filtered_df = df.loc[selected_rows]
+        filtered_df = df.loc[[idx for idx in df.index if idx in selected_rows]]
+
+        # Handle the case when no rows are selected
+        if filtered_df.empty:
+            # Create a figure with an error message
+            fig = go.Figure()
+            fig.update_layout(
+                title="No rows selected. Please select at least one row.",
+                xaxis={'visible': False},
+                yaxis={'visible': False}
+            )
+            return fig
+
         # Create the heatmap figure
         fig = px.imshow(
-            df,
+            filtered_df,
             color_continuous_scale=px.colors.sequential.Blues,
             title=f"Prophage Detection Heatmap - {accession}"
         )
 
         # Update x-axis rangeslider visibility
         fig.update_xaxes(rangeslider_visible=True)
-
         # Adjust the layout to make the heatmap taller and adjust fonts
         fig.update_layout(
             hovermode='x unified',
@@ -126,7 +175,7 @@ def create_heatmap_figure(accession):
         fig.update_xaxes(
             tickfont=dict(size=8),   # Reduce x-axis tick font size
             tickangle=45,            # Rotate x-axis labels if they overlap
-            tickformat="~s",         # Format large numbers in SI notation (e.g., 1M for 1,000,000)
+            tickformat="~s",         # Format large numbers in SI notation
         )
 
         # Adjust y-axis tick labels
@@ -155,14 +204,15 @@ def create_heatmap_figure(accession):
         )
         return fig
 
-# Callback to update the heatmap when a new dataset is selected
+# Callback to update the heatmap when the dataset or selected rows change
 @app.callback(
     Output('graph-content', 'figure'),
-    Input('dataset-dropdown', 'value')
+    [Input('dataset-dropdown', 'value'),
+     Input('row-checklist', 'value')]
 )
-def update_heatmap(selected_accession):
+def update_heatmap(selected_accession, selected_rows):
     # Create the figure
-    fig = create_heatmap_figure(selected_accession)
+    fig = create_heatmap_figure(selected_accession, selected_rows)
     return fig
 
 if __name__ == '__main__':
