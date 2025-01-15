@@ -1,0 +1,37 @@
+/* assets/styles.css */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+label {
+    display: block;
+    margin-bottom: 1vh;
+}
+
+input {
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 1vh;
+}
+
+p {
+    margin-bottom: 1vh;
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+
+/* Make the dropdown text readable regardless of screen size */
+.Select-value-label {
+    font-size: 0.9em;
+}
+
+/* Ensure the slider is responsive */
+.rc-slider {
+    width: 100%;
+    margin: 2vh 0;
+}
